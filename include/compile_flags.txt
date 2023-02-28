@@ -1,0 +1,9 @@
+-xc++
+-I 
+../include
+-I
+/usr/include/root/
+-I 
+/data/home/zhipz/root7/include
+
+
