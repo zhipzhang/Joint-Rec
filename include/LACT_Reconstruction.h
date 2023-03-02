@@ -89,6 +89,10 @@ class LACT_Reconstruction
         {
             return DrawMode;
         }
+        std::vector<int> GetDrawEvents()
+        {
+            return DrawEvents;
+        }
         void Draw(TTree*, LACTEvent*);
         void SetEventPix(LACTEvent* );
         void Draw_Events(LACTEvent*, int);

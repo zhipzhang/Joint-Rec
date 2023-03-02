@@ -29,8 +29,8 @@ LACT_Reconstruction::LACT_Reconstruction()
     min_good_images = 2;
     min_size = 200;
     max_dist = 4.;
-    tail1 = 5;
-    tail2 = 10;
+    tail1 = 10;
+    tail2 = 20;
 
     havelookup = false;
     num_only = 0; 
@@ -636,6 +636,7 @@ void LACT_Reconstruction::Draw(TTree* eventTree, LACTEvent* event)
             SetEventPix(event);
             event->GetData();
             Draw_Events(event, ievent);
+            event->Reset();
         }
 
     }
@@ -650,7 +651,7 @@ void LACT_Reconstruction::Draw_Events(LACTEvent* event, int ievent)
     {
 
         int tel_id = rec->GetTelid(i);
-        if(rec->good_image[i] >= 0)
+        if(rec->good_image[i] >= 1)
         {
             int index = event->GetTelIndex(tel_id);
             std::cout << "rp is " <<rec->rp[i] <<std::endl;
@@ -665,6 +666,7 @@ void LACT_Reconstruction::Draw_Events(LACTEvent* event, int ievent)
             display(event->GetTelData(i), ievent);
         }
     }
+    std::cout << "direction_error  is " << rec->GetDirectionError() << std::endl;
 }
 
 void LACT_Reconstruction::display(LACT_TelData* iteldata, int ievent)
@@ -699,7 +701,7 @@ void LACT_Reconstruction::display(LACTRecEvent *rec, LACT_TelData* iteldata, int
 {
     int tel_id = iteldata->GetTelid();
     TCanvas* camera_image =  new TCanvas(Form("Event %d of Camera %d", ievent, tel_id), Form("LACT IMAGE"), 1800, 1800);
-    TH2Poly* camera       =  new TH2Poly(Form("Event %d Camera %d", ievent, tel_id),"", -11, 11, -11, 11);
+    TH2Poly* camera       =  new TH2Poly(Form("Event %d Camera %d", ievent, tel_id),"", -6, 6, -6, 6);
     for( int i = 0; i < iteldata->GetImagePixnum(); i++)
     {
         int ipix = iteldata->GetImagePixId(i);

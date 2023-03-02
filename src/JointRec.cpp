@@ -67,7 +67,14 @@ int main(int argc, char** argv)
                 if(Lact_Reconstruction->OnlyDraw())
                 {
                         Lact_Reconstruction->Draw(events, lactevent);    
-                        out_root->Close();
+                        Km2a_Reconstruction->SetDrawEvents(Lact_Reconstruction->GetDrawEvents());
+                        for (auto i : Km2a_Reconstruction->GetDrawEvents())
+                        {
+                                events->GetEntry(i);
+                                SetKM2AStatus(km2aevent, geom);
+                                Km2a_Reconstruction->Draw(km2aevent, i, km2arec);
+                        }
+                        input_root->Close();
                         break;
 
                 }

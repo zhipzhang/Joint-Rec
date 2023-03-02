@@ -39,6 +39,7 @@ class G4KM2A_Reconstruction
      static float nED[6000]; 
      static float nMD[2000];
      static float nWCDA[4000];
+     std::vector<int> events;
 
      static G4KM2A_Geometry *geom;// = G4KM2A_Geometry::GetInstance(ARRAY); 
   public:
@@ -60,7 +61,7 @@ class G4KM2A_Reconstruction
      float  getdensityM(TClonesArray &tHits, int np, int rcut1, int rcut2, KM2ARecEvent *trec, const char *style);
      float  getmuM(TClonesArray &tHits,int np,int rcut,KM2ARecEvent *trec);
      float  getmuW(TClonesArray &tHits,int np,int cut,KM2ARecEvent *trec);
-     void   Draw(LHEvent* tevent);
+     void   Draw(LHEvent* tevent, int i, KM2ARecEvent* trec);
 
      //NKG function1 for likelihood1 taken into account the detectors with no hit
      static void NKGfunction1(int &npar,double *gin,double &f,double *par,int iflag);
@@ -70,6 +71,14 @@ class G4KM2A_Reconstruction
      int core_likelihood(TClonesArray &tHits,int np,KM2ARecEvent *trec,const char *style,int method);
 
      int eventrecline(LHEvent *tevent,KM2ARecEvent *trec);
+     void SetDrawEvents(std::vector<int> e)
+     {
+         events = e;
+     }
+     std::vector<int> GetDrawEvents()
+     {
+         return events;
+     }
 
 };
 

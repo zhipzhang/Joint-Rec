@@ -1,16 +1,23 @@
 #include "G4KM2A_Reconstruction.h"
 #include "G4KM2A_Geometry.h"
 #include "G4KM2A_RecE.h"
+#include "KM2ARecEvent.h"
 #include "LHEvent.h"
 #include "RtypesCore.h"
+#include "TCanvas.h"
 #include "TClonesArray.h"
 #include "TDecompSVD.h"
+#include "TGraph.h"
+#include "TH2Poly.h"
 #include "TMath.h"
 #include "TMatrixDfwd.h"
 #include "TMinuit.h"
 #include "TVectorDfwd.h"
 #include <cmath>
 #include <cstring>
+#include "TAxis.h"
+#include "TLatex.h"
+#include "TPaveText.h"
 
 #define PETH 0.2
 G4KM2A_Geometry * G4KM2A_Reconstruction::geom = 0;
@@ -67,6 +74,7 @@ int G4KM2A_Reconstruction::Init(KM2ARecEvent *trec){
     trec->NuM1 =  trec->NuM2 = trec->NuM3 = trec->NuM4 = trec->NuM5 = trec->NuM6 = -1;
     trec->NuW1=-1; trec->NuW3=-1;trec->NuW3=-1;
     trec->NfiltE =-1; trec->NfiltM =-1; trec->NfiltW =-1;
+    trec->Direction_Error = -1;
    return 0;
 }
 /*
@@ -538,7 +546,7 @@ int G4KM2A_Reconstruction::eventrecline(LHEvent *tevent, KM2ARecEvent *trec)
             trec->NuM6 = getmuM(*HitsM, trec->NhitM, 15, trec);
 
             trec->Rec_Erho = recer50new3(trec->rec_Eage, trec->rec_Esize, trec->rec_theta);
-            trec->Direction_Error = TMath::RadToDeg() * angle_between(trec->phi, TMath::Pi() - trec->theta, trec->rec_phi, TMath::Pi() - trec->rec_theta);
+            trec->Direction_Error = TMath::RadToDeg() * angle_between(trec->phi, TMath::Pi()/2 - trec->theta, trec->rec_phi, TMath::Pi()/2 - trec->rec_theta);
 
 
         }
@@ -1200,4 +1208,151 @@ int G4KM2A_Reconstruction::noisefilter(TClonesArray &tHits,int np,int twind,int 
         }
    }
    return nus;
+}
+void G4KM2A_Reconstruction::Draw(LHEvent *tevent, int num_id, KM2ARecEvent* trec)
+{   
+    eventrecline(tevent, trec);
+
+    TCanvas* km2a_image = new TCanvas(Form("event id %d km2a image", num_id), "km2a_Image", 1600, 800);
+
+    int ned = geom->GetNED();
+    int nmd = geom->GetNMD();
+    TGraph* g_ed = new TGraph();
+    TGraph* g_md = new TGraph();
+
+    TGraph* core_pos = new TGraph();
+    core_pos->SetPoint(0, -trec->rec_y, trec->rec_x);
+    core_pos->SetMarkerStyle(29);
+    core_pos->SetMarkerColor(2);
+    core_pos->SetMarkerSize(2);
+
+
+    double x, y, z;
+
+    for( int i = 0; i < ned; i ++)
+    {
+        geom->Getxyz(i, x, y, z, 1, "ED");
+        z = x;
+        x = -y;
+        y = z;
+        g_ed->SetPoint(i, x, y);
+    }
+
+    for( int i = 0; i < nmd; i++)
+    {
+        geom->Getxyz(i, x, y, z, 1, "MD");
+        z = x;
+        x = -y;
+        y = z;
+        g_md->SetPoint(i, x, y);
+    }
+    g_ed->SetMarkerStyle(97);
+    g_ed->SetMarkerColor(18);
+    g_ed->GetXaxis()->SetRangeUser(-750,650);
+    g_ed->GetYaxis()->SetRangeUser(-750,650);
+    g_ed->GetXaxis()->SetTitle("X (m)");
+    g_ed->GetXaxis()->CenterTitle();
+    g_ed->GetXaxis()->SetLabelSize(0.05);
+    g_ed->GetXaxis()->SetTitleSize(0.05);
+    g_ed->GetYaxis()->SetTitle("Y (m)");
+    g_ed->GetYaxis()->CenterTitle();
+    g_ed->GetYaxis()->SetLabelSize(0.05);
+    g_ed->GetYaxis()->SetTitleSize(0.05);
+    g_ed->SetMarkerSize(1);
+
+    g_md->SetMarkerStyle(4);
+    g_md->SetMarkerColor(16);
+    g_md->SetMarkerSize(1);
+    
+    km2a_image->Divide(2,1);
+    km2a_image->cd(1);
+    gPad->SetMargin(0.2,0.2,0.2,0.2);
+    gPad->SetTickx();
+    gPad->SetTicky();
+    g_ed->Draw("ap");
+    g_md->Draw("psame");
+    km2a_image->cd(2);
+    gPad->SetMargin(0.2,0.2,0.2,0.2);
+    gPad->SetTickx();
+    gPad->SetTicky();
+    g_ed->Draw("ap");
+    g_md->Draw("psame");
+
+    TH2Poly* ed_h2p = new TH2Poly();
+    TH2Poly* md_h2p = new TH2Poly();
+
+    km2a_image->cd(1);
+
+    auto ed = tevent->GetHitsE();
+    for( int i = 0; i < tevent->GetNhitE(); i++)
+    {
+        LHHit* tmp_ed = (LHHit* ) (*ed)[i];
+        int id = tmp_ed->GetId();
+        double x, y, z;
+        double content = log10(tmp_ed->GetPe());
+        if( content < 0)
+        {
+            continue;
+        }
+        geom->Getxyz(id, x, y, z, 1, "ED");
+        z = x;
+        x = -y;
+        y = z;
+        double x_ed[4] = {0};
+        double y_ed[4] = {0};
+
+        x_ed[0] = x - 5, y_ed[0] = y - 5;
+        x_ed[1] = x + 5, y_ed[1] = y - 5;
+        x_ed[2] = x + 5, y_ed[2] = y + 5;
+        x_ed[3] = x - 5, y_ed[3] = y + 5;
+
+        ed_h2p->AddBin(4, x_ed, y_ed);
+        ed_h2p->Fill(x, y , content);
+    }
+    ed_h2p->Draw("colz same");
+    TLatex *edtitle = new TLatex(560,600,"log_{10}(Ne)");
+    edtitle->SetTextSize(0.04);
+    edtitle->Draw("same");
+    core_pos->Draw("psame");
+
+    km2a_image->cd(2);
+    auto md = tevent->GetHitsM();
+    for( int i = 0; i < tevent->GetNhitM(); i++)
+    {
+        LHHit* tmp_md = (LHHit*) (*md)[i];
+        int id = tmp_md->GetId();
+        double content = log10(tmp_md->GetPe());
+        double x, y, z;
+        if(content <0 || tmp_md->GetStatus() <2.5)
+        {
+            continue;
+        }
+
+        geom->Getxyz(id, x, y, z, 1, "ED");
+        z = x;
+        x = -y;
+        y = x;
+        double x_md[4] = {0};
+        double y_md[4] = {0};
+        x_md[0] = x - 5, y_md[0] = y - 5;
+        x_md[1] = x + 5, y_md[1] = y - 5;
+        x_md[2] = x + 5, y_md[2] = y + 5;
+        x_md[3] = x - 5, y_md[3] = y + 5;
+        
+        md_h2p->AddBin(4, x_md, y_md);
+        md_h2p->Fill(x, y , content);
+    }
+    md_h2p->Draw("colz same");
+    TLatex *mdtitle = new TLatex(500, 600, "log_{10}(N#mu)");
+    mdtitle->SetTextSize(0.04);
+    mdtitle->Draw("same");
+    core_pos->Draw("psame");
+
+    km2a_image->cd();
+    TPaveText *pave_text =  new TPaveText(0.15,0.88,0.85,0.95);
+    pave_text->SetFillStyle(0);
+    pave_text->AddText(Form("E: %.2lfTeV, rec_theta %lf rec_phi %lf  direction_error : %lf", trec->E/1000, trec->rec_theta, trec->rec_phi, trec->Direction_Error));
+    pave_text->Draw("same");
+
+    km2a_image->SaveAs(Form("Event%d_km2a.png", num_id));
 }

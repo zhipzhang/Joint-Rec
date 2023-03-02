@@ -10,14 +10,14 @@ LACT_TelData::LACT_TelData(int n)
     npix = n;
     pe = new float[npix];
     itel = -1;
-    flag = true;
+    flag = false;
     overflow = 0;
     hottest = 0;
 }
 
 LACT_TelData::~LACT_TelData()
 {
-    delete [] pe;
+    delete []pe;
     image_pixel.clear();
 }
 

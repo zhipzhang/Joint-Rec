@@ -30,6 +30,7 @@ LACTRecEvent::LACTRecEvent()
     MCal = MCaz = weight = rec_altitude = rec_azimuth = rec_camerax = rec_cameray = direction_error = Point_Al = Point_Al = -999;
     ngood_images = npass_size = 0;
     mrsl = mrsw = - 9999;
+    direction_error = -999;
 }
 
 void LACTRecEvent::Reset()
