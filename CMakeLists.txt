@@ -30,3 +30,9 @@ add_executable(JointRec)
 target_sources(JointRec PUBLIC ${PROJECT_SOURCE_DIR}/src/JointRec.cpp ${PROJECT_SOURCE_DIR}/src/LACT_Reconstruction.cpp ${PROJECT_SOURCE_DIR}/src/LACT_RunPara.cpp ${PROJECT_SOURCE_DIR}/src/LACT_Telconfig.cpp ${PROJECT_SOURCE_DIR}/src/LACT_TelData.cpp ${PROJECT_SOURCE_DIR}/src/LACTEvent.cpp  ${PROJECT_SOURCE_DIR}/src/LACTRecEvent.cpp LactRecEvent.cxx ${PROJECT_SOURCE_DIR}/src/straux.c )
 target_include_directories(JointRec PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(JointRec PRIVATE  ${ROOT_LIBRARIES} KM2A)
+
+add_executable(Analysis)
+target_sources(Analysis PUBLIC ${PROJECT_SOURCE_DIR}/src/G4KM2A_analysis.cpp ${PROJECT_SOURCE_DIR}/src/LACTRecEvent.cpp LactRecEvent.cxx ${PROJECT_SOURCE_DIR}/src/LACT_RunPara.cpp ${PROJECT_SOURCE_DIR}/src/straux.c)
+target_include_directories(Analysis PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(Analysis PRIVATE  ${ROOT_LIBRARIES} KM2A)
+

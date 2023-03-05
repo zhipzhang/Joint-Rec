@@ -32,7 +32,7 @@ double recer50new3(double age, double size, double theta)
     {
         return -1;
     }
-    if( theta > 0 || (theta * 57.3 > 51))
+    if( theta < 0 || (theta * 57.3 > 51))
     {
         return -1;
     }
