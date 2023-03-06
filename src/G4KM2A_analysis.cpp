@@ -26,6 +26,8 @@ int main(int argc, char** argv)
     TH2D* h10 = new TH2D("h10", "Core Resolution ( Core Dist > 550m)", 10, 1, 3, 100, 0, 100);
     TH2D* h11 = new TH2D("h11", "Core_Pos not Pass the Condition 1 ", 320, -800, 800,  320, -800, 800);
     TH2D* h12 = new TH2D("h12", "Core_Dist Versus Energy", 20, 1, 3, 100, 0, 900);
+    TH2D* h13 = new TH2D("h13", "pass age cut", 10, 1, 3, 1000, 0, 1);
+    TH2D* h14 = new TH2D("h14", "pass age cut", 10, 1,3, 1000, 0, 1);
     KM2ARecEvent* km2arec = new KM2ARecEvent();
     LACTRecEvent* lactrec = new LACTRecEvent();
 
@@ -63,11 +65,19 @@ int main(int argc, char** argv)
             {
                 h4->Fill(km2arec->Rec_Erho, km2arec->Direction_Error, flag * lactrec->weight);
                 h8->Fill(km2arec->Rec_Erho, core_err, flag * lactrec->weight);
+                if( km2arec->rec_Eage > 0.6 && km2arec->rec_Eage < 2.4 && (km2arec->NpE1- km2arec->NpE2 ) > km2arec->NpE2)
+                {
+                    h13->Fill(km2arec->Rec_Erho, km2arec->Direction_Error, flag * lactrec->weight);
+                }
             }
             else if ( core_dist < 550)
             {
                 h5->Fill(km2arec->Rec_Erho, km2arec->Direction_Error, flag * lactrec->weight);
                 h9->Fill( km2arec->Rec_Erho, core_err, flag * lactrec->weight);
+                if( km2arec->rec_Eage > 0.6 && km2arec->rec_Eage < 2.4 && (km2arec->NpE1- km2arec->NpE2 ) > km2arec->NpE2)
+                {
+                    h14->Fill(km2arec->Rec_Erho, km2arec->Direction_Error, flag * lactrec->weight);
+                }
             }
             else 
             {
@@ -103,5 +113,8 @@ int main(int argc, char** argv)
     h9->Write();
     h10->Write();
     h11->Write();
+    h12->Write();
+    h13->Write();
+    h14->Write();
     out_root->Close();
 }
