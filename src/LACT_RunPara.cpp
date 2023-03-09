@@ -39,7 +39,9 @@ void LACT_RUNPARA::ProcessCommandLine(int argc, char **argv)
                         argv += 2;
                         continue;
                 }
-                if( (strcmp(argv[1], "--outfile")) == 0)
+                if( (strcmp(argv[1], "--outfile")) == 0 ||
+                        strcmp(argv[1], "--out_file") == 0 ||
+                        strcmp(argv[1], "--root_file " ) == 0)
                 {
                         out_file =  prefix +argv[2];
                         argc -= 2;

@@ -17,7 +17,7 @@ class LACT_RUNPARA
         int special_entries;
         bool SelectTel;
         bool ResetWeight;
-        double num_weight[4];
+        double num_weight[4]{1};
         double max_dist;
         double min_tel;
         std::vector<int> Only_Telescope;

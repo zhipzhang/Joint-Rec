@@ -38,6 +38,7 @@ class G4KM2A_Reconstruction
      static char _style[20];
      static float nED[6000]; 
      static float nMD[2000];
+     static int rED[6000];
      static float nWCDA[4000];
      std::vector<int> events;
 
@@ -62,7 +63,7 @@ class G4KM2A_Reconstruction
      float  getmuM(TClonesArray &tHits,int np,int rcut,KM2ARecEvent *trec);
      float  getmuW(TClonesArray &tHits,int np,int cut,KM2ARecEvent *trec);
      void   Draw(LHEvent* tevent, int i, KM2ARecEvent* trec);
-
+     void   setEDdr(KM2ARecEvent* trec);
      //NKG function1 for likelihood1 taken into account the detectors with no hit
      static void NKGfunction1(int &npar,double *gin,double &f,double *par,int iflag);
      //NKG function2 for likelihood2 only taken into account the detectors with  hit 

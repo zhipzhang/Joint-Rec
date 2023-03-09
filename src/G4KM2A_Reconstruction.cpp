@@ -7,6 +7,7 @@
 #include "TCanvas.h"
 #include "TClonesArray.h"
 #include "TDecompSVD.h"
+#include "TError.h"
 #include "TGraph.h"
 #include "TH2Poly.h"
 #include "TMath.h"
@@ -26,6 +27,7 @@ G4KM2A_Reconstruction* G4KM2A_Reconstruction::m_myself = 0;
 
 float  G4KM2A_Reconstruction::nED[] = {0};
 float  G4KM2A_Reconstruction::nMD[] = {0};
+int    G4KM2A_Reconstruction::rED[] = {0};
 float  G4KM2A_Reconstruction::nWCDA[] = {0};
 double G4KM2A_Reconstruction::_np   = 0;
 double G4KM2A_Reconstruction::_dirl = 0;
@@ -96,6 +98,10 @@ void G4KM2A_Reconstruction::setnparticle(TClonesArray &tHits, int np, double pe)
             {
                 ne = 0;
             }
+            if( ne  > 10000)
+            {
+                ne = 10000;
+            }
             tHit->SetPe(ne);
         }
     }
@@ -112,7 +118,9 @@ int G4KM2A_Reconstruction::spacetimefilter(TClonesArray &tHits, int np, int twin
     LHHit *tHit;
     int t;
     int Nall = 0;
-    int Nbin = 10000;
+    int Nbin = 10000 - 1000;
+    int Nstart = 4000;
+    int NStep  = 50;
     int trigger_num[10000]{0};
     for(int  i = 0; i < np; i++)
     {
@@ -151,17 +159,17 @@ int G4KM2A_Reconstruction::spacetimefilter(TClonesArray &tHits, int np, int twin
     double x2,y2,z2;
     double r;
     int    id;
-    for( int tflag = 0; tflag <= Nbin-twind; tflag++)
+    for( int tflag = Nstart; tflag <= Nbin-twind; tflag += NStep)
     {
         if( trigger_num[tflag] == 0 && tflag != (Nbin - twind))
         {
-            continue;
+            tflag++;
         }
         nums = 0;
         for( int j =0 ;j < np; j++)
         {
             tHit = (LHHit *)((tHits)[j]);
-            if( tHit->GetStatus() > 0 && tHit->GetTime() > tflag && tHit->GetTime() < tflag + twind)
+            if( tHit->GetStatus() > 0 && tHit->GetTime() >= tflag && tHit->GetTime() < tflag + twind)
             {
                 if(geom->Getxyz(tHit->GetId(), x1, y1, z1, 1, style) < 0)
                 {
@@ -189,7 +197,7 @@ int G4KM2A_Reconstruction::spacetimefilter(TClonesArray &tHits, int np, int twin
                     }
                 }
             }
-            if( nums > max_nums && num_ed > 5)
+            if( nums > max_nums && num_ed > 10)
             {
                 max_nums = nums;
                 max_id = id;
@@ -242,14 +250,16 @@ int G4KM2A_Reconstruction::spacetimefilter(TClonesArray &tHits, int np, int twin
     np     : The number of ED Detector which have data
     twind  : time window for trigger
     style  : May Can be changed to Trigger WCDA
-    th     : Threshold in the twind
+    flag   : Whether Used the ED Guard Ring
 */
-int G4KM2A_Reconstruction::trigger(TClonesArray &tHits, int np, int twind, const char *style, int th)
+int G4KM2A_Reconstruction::trigger(TClonesArray &tHits, int np, int twind, const char *style, int flag)
 {
     LHHit* tHit;
-    int Nbin = 10000;
+    int Nbin = 10000 - 1000;
+    int Nstart = 4000;
     int trigger_num[10000]{0};
     int  t;
+    std::map<int, int> TriggerED; // Maybe One ED Will be Computed Several Times?
 
     for( int i = 0; i < np; i++)
     {
@@ -257,7 +267,7 @@ int G4KM2A_Reconstruction::trigger(TClonesArray &tHits, int np, int twind, const
         if( tHit->GetStatus() > -1) // Status -1 means detector not work well
         {
             t = int(tHit->GetTime());
-            if( t > 0 && t < 10000)
+            if( t > 0 && t < Nbin)
             {
                 trigger_num[t]++;
             }
@@ -267,7 +277,8 @@ int G4KM2A_Reconstruction::trigger(TClonesArray &tHits, int np, int twind, const
     // Total Time is 10000, test whether it can trigger in any twind 
     int nums = 0; // record the number in twind
     int max_nums = 0;
-    for( int tflag = 0; tflag <= Nbin - twind; tflag++)
+    double x,y,z;
+    for( int tflag = Nstart; tflag < Nbin - twind; tflag++)
     {
         if( trigger_num[tflag] == 0 && tflag != (Nbin - twind))
         {
@@ -276,16 +287,82 @@ int G4KM2A_Reconstruction::trigger(TClonesArray &tHits, int np, int twind, const
         nums = 0;
         for( int  j = tflag; j < (tflag + twind); j++)
         {
+
             nums += trigger_num[j];
         }
         if( nums > max_nums)
         {
-            max_nums = nums;
+            TriggerED.clear();
+            nums = 0;
+            for( int i  = 0 ; i < np ;  i++)
+            {
+                tHit = (LHHit*) ((tHits)[i]);
+                t = int(tHit->GetTime());
+                if( tHit->GetStatus() > -1 && t >=tflag && t < tflag + twind)
+                {
+                    int id = tHit->GetId();
+                    if( flag == 1)
+                    {
+                        if( geom->Getxyz(id, x, y, z, 1, style) < 0)
+                        {
+                            continue;
+                        }
+                        if( sqrt(x * x + y * y) > 575)
+                        {
+                            continue;
+                        }
+                    }
+                    if( TriggerED.count(id))
+                    {
+                        TriggerED[id] ++;
+                    }
+                    else 
+                    {
+                        TriggerED[id] = 1;
+                    }
+
+                }
+
+            }
         }
+            if( TriggerED.size() > max_nums)
+                max_nums = TriggerED.size();
 
     }
 
     return max_nums;
+}
+
+void G4KM2A_Reconstruction::setEDdr(KM2ARecEvent* trec)
+{
+    int ned, nwc;
+    double x, y, z;
+    double dx, dy, dz;
+    double r;
+    ned = geom->GetNED();
+    double rref = 200;
+    if( trec->NfiltE > 100 && trec->NfiltE <=200) rref=300;
+    if( trec->NfiltE > 200)
+    {
+        rref = 400;
+    }
+    for( int i = 0; i < ned; i++)
+    {
+        geom->Getxyz(i, x, y, z, 0, "ED");
+        dx = x - trec->rec_x;
+        dy = y - trec->rec_y;
+        dz = z;
+        r = sqrt(dx * dx + dy * dy + dz * dz - pow( dx * _dirl + dy * _dirm - dz * _dirn ,2));
+        if( r < rref)
+        {
+            rED[i] = 0;
+        }
+        else {
+            rED[i] = -1;
+        }
+
+
+    }
 }
 
 int G4KM2A_Reconstruction::planarfit(TClonesArray &tHits, int np, KM2ARecEvent *trec, const char *style)
@@ -385,6 +462,7 @@ int G4KM2A_Reconstruction::planarfit(TClonesArray &tHits, int np, KM2ARecEvent *
             rr[2] = r[2];
         }
     }
+    phi = theta = -10;
     dt = rr[0] * rr[0] + rr[1] * rr[1];
     if( Flag > 0.5 && dt <= 1. && dt > 0.)
     {
@@ -424,7 +502,7 @@ int G4KM2A_Reconstruction::eventrecline(LHEvent *tevent, KM2ARecEvent *trec)
     int twind = 400;
     int rwind = 100;
     int ned = geom->GetNED();
-    trec->NtrigE = trigger(*HitsE, tevent->GetNhitE(), twind, "ED", 15);
+    trec->NtrigE = trigger(*HitsE, tevent->GetNhitE(), twind, "ED", 1);
     trec->NhitE  = tevent->GetNhitE();
     trec->NhitM  = tevent->GetNhitM();
     trec->NtrigW = tevent->GetNtrigE();      //no meaningful 
@@ -781,11 +859,11 @@ int G4KM2A_Reconstruction::conicalfit(TClonesArray &tHits,int np,KM2ARecEvent *t
                 continue; //not use the noise hit filter by planar fit
             if(geom->Getxyz(tHit->GetId(),x,y,z,1,style) < 0)
                 continue;
-            dx = x-trec->rec_x; 
-            dy = y-trec->rec_y;
+            dx = x - trec->rec_x; 
+            dy = y - trec->rec_y;
             dz = z;
             dr  = (dx*dx + dy*dy + dz*dz - pow(dx*dirl + dy*dirm - dz*dirn,2.));
-            if(dr < 0)
+            if(dr < 0 )
                 dr = 0;
             dr = sqrt(dr);
 
@@ -824,12 +902,13 @@ int G4KM2A_Reconstruction::conicalfit(TClonesArray &tHits,int np,KM2ARecEvent *t
         TDecompSVD svd(a);
         Bool_t ok;
         r = svd.Solve(b,ok);
-        printf(" ConicalFit : %d %d %lf %lf %lf\n",iter,nus,r[0],r[1],r[3]);
-        if(!ok) break;
+       // printf(" ConicalFit : %d %d %lf %lf %lf\n",iter,nus,r[0],r[1],r[3]);
+        if(!ok) 
+            break;
         if((r[0]*r[0] + r[1]*r[1]) > 1)
         {
-             //printf(" ConicalFit >1: iter=%d Nhit=%d %lf %lf %lf\n",iter,nus,r[0],r[1],r[3]);
-             break;
+            //printf(" ConicalFit >1: iter=%d Nhit=%d %lf %lf %lf\n",iter,nus,r[0],r[1],r[3]);
+            break;
         }
         if(ok)
         {    
@@ -855,7 +934,7 @@ int G4KM2A_Reconstruction::conicalfit(TClonesArray &tHits,int np,KM2ARecEvent *t
     {
         trec->rec_Etheta_c = the;
         trec->rec_Ephi_c   = phi;
-        trec->rec_Ea       = r[2]*(1-AA)+AA*alpha;
+        trec->rec_Ea       = r[2] * (1 - AA) + AA * alpha;
         trec->rec_Ec0_c    = r[3];
         trec->rec_Esigma_c = sigma;
     }
@@ -984,16 +1063,16 @@ void G4KM2A_Reconstruction::NKGfunction1(int &npar,double *gin,double &f,double 
         A = 1.0*_dirn;
         for(i = 0;i < ned; i++)
         {
-            if(nED[i] > -0.5)
+            if(nED[i] > -0.5 && nED[i] < 8000 && rED[i] > -0.5)
             {
                 geom->Getxyz(i,x,y,z,0,_style);
                 dx = x-par[0];
                 dy = y-par[1];
                 dz = z;
                 r  = sqrt(dx*dx+ dy*dy + dz*dz - pow(dx*_dirl + dy*_dirm - dz*_dirn,2.));
-                if( r < 0.3)
-                    r=0.3;
-                u  = A*cs * par[2]*pow(r/rm,par[3]-2)* pow(1+r/rm,par[3]-4.5);  
+                if( r < 0.2)
+                    r=0.2;
+                u  = A*cs * par[2]*pow(r/rm,par[3]-2.5)* pow(1+r/rm,par[3]-4.5);  
                 if( u > 0)
                     sum += (nED[i])*log(u)-u; 
             }
@@ -1061,8 +1140,10 @@ int G4KM2A_Reconstruction::core_likelihood(TClonesArray &tHits,int np,KM2ARecEve
         return -1;
     int  i,flag,ned,nwc;
     double size,x,y,sigma,esize,ex,ey,esigma,arglist[10];
+    double age,eage;
     x = -1.e4;
     y = -1.e4;
+    age = 0;
     //G4KM2A_Geometry *geom = G4KM2A_Geometry::GetInstance(ARRAY);
     ned = geom->GetNED();
     nwc = geom->GetNWCDA();
@@ -1093,6 +1174,7 @@ int G4KM2A_Reconstruction::core_likelihood(TClonesArray &tHits,int np,KM2ARecEve
                     nED[geom->GetEDId2(tHit->GetId())] += tHit->GetPe();
                 size += tHit->GetPe();
             }
+            setEDdr(trec);
         }
         else if(strcmp(_style,"WCDA")==0){
             for(i=0;i<nwc;i++)    { if(nWCDA[i]>-0.5)nWCDA[i]=0;}
@@ -1114,7 +1196,6 @@ int G4KM2A_Reconstruction::core_likelihood(TClonesArray &tHits,int np,KM2ARecEve
         minuit->mnparm(3,"age",1.2,0.2,0.5,2.5,flag); //for NKG
         //flag=0 if no problems,  >0 if MNPARM unable to implement definition
         //minuit->FixParameter(2);
-        minuit->FixParameter(3);
         if(method == 0)
             minuit->SetFCN(NKGfunction1);
         else 
@@ -1125,31 +1206,41 @@ int G4KM2A_Reconstruction::core_likelihood(TClonesArray &tHits,int np,KM2ARecEve
         arglist[0] = 500; //loop
         arglist[1] = 0.1; //tolerance
         flag = 0;
-        minuit->mnexcm("SIMPLEX",arglist,0,flag);
-        minuit->FixParameter(2);
         minuit->FixParameter(3);
+        minuit->Release(0);
+        minuit->Release(1);
+        minuit->Release(2);
+        minuit->mnexcm("SIMPLEX",arglist,0,flag);
+
         arglist[0] = 1000; //loop
         arglist[1] = 0.01; //tolerance
+        minuit->FixParameter(0);
+        minuit->FixParameter(1);
+        minuit->Release(3);
         minuit->mnexcm("MIGRAD",arglist,0,flag);
+        minuit->GetParameter(3,age,eage);
+
+        minuit->FixParameter(3);
+        minuit->Release(0);
+        minuit->Release(1);
+        minuit->mnexcm("MIGRAD", arglist, 0, flag);
         minuit->GetParameter(0,x,ex);
         minuit->GetParameter(1,y,ey);
+        minuit->GetParameter(2, size, esize);
 
         minuit->FixParameter(0);
         minuit->FixParameter(1);
-        minuit->Release(2);
         minuit->Release(3);
         minuit->mnexcm("MIGRAD",arglist,0,flag);
-        minuit->GetParameter(0,x,ex);
-        minuit->GetParameter(1,y,ey);
         minuit->GetParameter(2,size,esize);
-        minuit->GetParameter(3,sigma,esigma);
+        minuit->GetParameter(3,age,eage);
     }
     if(strcmp(style,"ED")==0)
     {
         trec->rec_Esize =float(size);
         trec->rec_Ex = float(x);
         trec->rec_Ey = float(y);
-        trec->rec_Eage = float(sigma);
+        trec->rec_Eage = float(age);
     }
     else if(strcmp(style,"WCDA")==0)
     {
